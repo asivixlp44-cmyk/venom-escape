@@ -80,6 +80,7 @@ export function updateHud() {
     const next = GIFTS.findIndex((g, i) => !S.giftClaimed[i]);
     const ready = GIFTS.some((g, i) => !S.giftClaimed[i] && secs >= g.min * 60);
     $('#giftBadge').hidden = !ready;
+    updateGiftChip(secs);
     setText($('#giftLb'), ready ? 'READY' : next < 0 ? 'DONE' : Math.max(1, Math.ceil((GIFTS[next].min * 60 - secs) / 60)) + 'm');
     $('#dailyBadge').hidden = !dailyStatus(S.daily, now).can;
     const shopReady = SYMBIOTES.some((s) => !(S.syms && S.syms[s.id]) && symAvailable(S, s) && S.wins >= s.price);
@@ -128,14 +129,37 @@ export function setWorldLoading(w) {
     el.hidden = false;
 }
 // ----- the objective line -----
-let goalText = null;
-export function setGoal(text) {
+// a goal can carry an action: the line becomes a button (buy that symbiote, go train...)
+let goalText = null, goalAct = null;
+export function setGoal(text, act) {
+    goalAct = act || null;
+    const g = $('#goal');
+    g.classList.toggle('act', !!goalAct);
     if (text === goalText) return;
     goalText = text;
-    const g = $('#goal');
     g.hidden = !text;
     if (text) { setText($('#goalText'), text); replay(g, 'pop'); }
 }
+$('#goal').addEventListener('click', () => { if (goalAct) goalAct(); });
+// ----- the next playtime gift, counting down under the stats (tap to claim) -----
+let giftKey = '';
+function updateGiftChip(secs) {
+    const k = GIFTS.findIndex((g, i) => !S.giftClaimed[i]), el = $('#giftChip');
+    if (k < 0) { if (!el.hidden) el.hidden = true; return; }
+    const g = GIFTS[k], left = Math.max(0, Math.ceil(g.min * 60 - secs)), ready = left <= 0;
+    const t = ready ? '🎁 CLAIM: ' + rewardText(g) + '!' : '🎁 ' + rewardText(g) + ' in ' + clock(left);
+    const key = t + ready;
+    if (key === giftKey) return;
+    giftKey = key;
+    el.hidden = false;
+    el.classList.toggle('ready', ready);
+    el.dataset.k = k;
+    setText($('#giftChipT'), t);
+}
+$('#giftChip').addEventListener('click', () => {
+    const el = $('#giftChip'), k = +el.dataset.k;
+    if (el.classList.contains('ready')) net.send('gift', { k }); else openModal('gifts');
+});
 // ----- the tentacle meter (bottom centre while you steer) -----
 let meterKey = '', knobT = '';
 export function setMeter(m) {
@@ -501,8 +525,18 @@ function renderInvite(body) {
 // =====================================================================================
 // Daily rewards
 // =====================================================================================
+// The daily reward pops up once you've played a little (a brand-new player first gets to their first
+// Win), never in the middle of a swing or over another popup
+let dailyWait = false;
 export function openDailyOnJoin() {
-    if (dailyStatus(S.daily, net.now()).can && !openDailyOnJoin.done) { openDailyOnJoin.done = true; setTimeout(openDaily, 1500); }
+    if (openDailyOnJoin.done || dailyWait || !dailyStatus(S.daily, net.now()).can) return;
+    dailyWait = true;
+    const tryOpen = () => {
+        const played = Date.now() - (S.joinedAt || Date.now());
+        if ((S.totalWins > 0 || played > 75000) && !S.flying && !anyPopup()) { dailyWait = false; openDailyOnJoin.done = true; if (dailyStatus(S.daily, net.now()).can) openDaily(); return; }
+        setTimeout(tryOpen, 1500);
+    };
+    setTimeout(tryOpen, 1500);
 }
 function openDaily() { renderDaily(); $('#daily').hidden = false; setMusicDuck(true); }
 function renderDaily() {

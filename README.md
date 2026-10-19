@@ -28,7 +28,7 @@ For development run `npm run dev:server` and `npm run dev:client`, then open htt
 
 ## Gameplay
 
-- **Venom**: +1 every second, wherever you are, times your symbiotes, the Train Zone pad you stand on, your rebirths and boosts. Venom is your level (the ring on the left), and your level is your tentacle's length (30 studs at level 1, up to 760).
+- **Venom**: +1 every second, wherever you are, times your symbiotes, the Train Zone pad you stand on, your rebirths and boosts. Venom is your level (the ring on the left), and your level is your tentacle's length (30 studs at level 1, up to 760). The first levels come every few seconds (level 5 in about two minutes even without buying anything), then the curve steepens and from level 40 on it is the long climb.
 - **The tentacle**: stand on a glowing launch pad (the pad with the tornado over it) and press **Space** (or **RELEASE VENOM**). The symbiote bursts out into its monster form and the tentacle shoots forward; **A / D** steer it left and right, **W / S** up and down (or drag, or the joystick), the meter shows how much is left (`18/23`). It grabs onto any platform top it comes down on; it stops dead against walls and pillars; the liquid and moving hazards burn it. Then you're pulled along it to the head. Land on the next platform, or fall in and start again from your checkpoint. Press Space again to let go early. If it runs out above a platform you drop onto it; grab a platform's side near its top and you climb up.
 - **Venom orbs**: six glowing orbs float along a good line through every stretch; fly the head through them for a few seconds' worth of Venom each (once per run, the pluck climbing a note with every orb in the same swing).
 - **Boost rings**: fly the head through a ring of light for +18% length and 40% more speed for a moment.
@@ -102,8 +102,9 @@ For development run `npm run dev:server` and `npm run dev:client`, then open htt
 - **Symbiotes**: every one you own adds its Venom per second (+3 to +3M). Wear any one: your suit, the venom on your outfit and your tentacle take its two glow colours (Shadow, Toxic Slime, Ember Fang, Frostbite, Thunder, Sunfang, Viper, Phantom, Blood Moon, Nightshade, Antidote, Chimera, Crimson Web, Golden King, Galaxy, Rainbow Overlord; in World 2 Jungle Fang, Swamp King, Spore Lord, Emerald Hydra; in World 3 Crystal Wraith, Nebula, Void Reaper, Cosmic Emperor).
 - **Rebirth** at level 15 (then 25, 35...): Venom back to zero, your multiplier up by one (x2, x3...) forever, new Train Zone pads. Wins, symbiotes, passes and unlocked worlds stay.
 - **Passes and boosts** (Wins): x2 Venom, x2 Wins, Fast Tentacle (+25% speed), Long Tentacle (+15% length), x2 Jump; 15-minute x2 Venom and x2 Wins boosts.
-- Also: offline earnings ("GET VENOM OFFLINE", after the daily reward), daily rewards (a Frostbite symbiote on day 7), playtime gifts, codes (`VENOM`, `ESCAPE`, `SYMBIOTE`, `LEGION`, `RELEASE`), Friend Boost (+10% Venom and Wins per Bloxity friend in the server, up to +50%).
-- **The guide**: the line at the top always says what to do next ("Jump to the pad to earn your first Win!", "Stage 18 needs Level 106…", "Walk into the ESCAPE portal!"), and a ribbon of chevrons runs from you to it (the launch pad, the Wins pad, your best Train Zone pad).
+- **Playtime gifts**: a chip under the stats counts down to the next one (at 1, 3, 5, 7 minutes, a free Thunder symbiote at 10, x2 Wins at 15, a free Viper symbiote at 30...); tap it to claim.
+- Also: offline earnings ("GET VENOM OFFLINE", after the daily reward), daily rewards (they pop up once you've earned your first Win, never mid-swing) (a Frostbite symbiote on day 7), playtime gifts, codes (`VENOM`, `ESCAPE`, `SYMBIOTE`, `LEGION`, `RELEASE`), Friend Boost (+10% Venom and Wins per Bloxity friend in the server, up to +50%).
+- **The guide**: when your tentacle is too short for the next stage, the top line becomes a button: buy the symbiote you can afford, or jump onto your best Train Zone pad (and, trained up, straight back to the launch pad). A launch pad won't fire a tentacle far too short for its stage (it says what to do instead, and the Train and Symbiotes buttons bounce). The line at the top always says what to do next ("Jump to the pad to earn your first Win!", "Stage 18 needs Level 106…", "Walk into the ESCAPE portal!"), and a ribbon of chevrons runs from you to it (the launch pad, the Wins pad, your best Train Zone pad).
 - **HUD**: what to do next, Wins, Venom (+per second), the world and stage and your streak along the top; your level ring and tentacle length (with the world's drain) on the left; Symbiotes, Train, Rebirth and x2 Venom on the right; the menu icons top right (Shop, Daily, Gifts, Teleport, Invite, Settings). Teleport lists the worlds and every platform you've reached in each. The top-left corner is kept free for the Bloxity overlay.
 
 ## Sound
@@ -142,6 +143,10 @@ For development run `npm run dev:server` and `npm run dev:client`, then open htt
 ## Deploy (Bloxity hosting)
 
 Pushing `main` (prod) or `dev` runs `.github/workflows/deploy.yml`: server image `ghcr.io/asivixlp44-cmyk/venom-escape-server`, Legion rollout, client upload. Play at https://venom-escape.play.bloxity.io once the app `venom-escape` exists on hosting.bloxity.io and the repo has the `LEGION_DEPLOY_TOKEN` secret.
+
+## Play stats
+
+`GET /api/stats?key=<stats key>&days=7` breaks sessions down by length, how far players got, what sent them into the liquid (a tentacle too short, a missed landing, a hazard, walking off an edge), touch vs desktop, frame rate and playtime gifts claimed. The first week live (median session 2.3 min, a fall for every launch, 65% never bought a symbiote, most stuck at stage 3 needing level 5 = 20 minutes of Venom) led to the faster early levels, the launch gate, the tappable guide, aim assist on for everyone and the gift countdown.
 
 ## QA
 

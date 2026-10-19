@@ -39,6 +39,13 @@ export async function statsSummary(days) {
         avgLevel: avg(list, 'level'),
         avgWinsEarned: Math.round(avg(list, 'wins')),
         rebirthedPct: pct(list.filter((d) => d.rebirths > 0).length, list.length),
+        // why they fall in (per session, on average), their devices and the playtime gifts
+        deathsBy: Object.fromEntries(['short', 'missed', 'hazard', 'walk', 'other'].map((k) => [k, Math.round((list.reduce((a, d) => a + ((d.dBy && d.dBy[k]) || 0), 0) / Math.max(1, list.length)) * 10) / 10])),
+        touch: lengths(list.filter((d) => d.touch)),
+        desktop: lengths(list.filter((d) => d.touch === false)),
+        avgFps: avg(list.filter((d) => d.fps > 0), 'fps'),
+        lowFpsPct: pct(list.filter((d) => d.fps > 0 && d.fps < 30).length, list.filter((d) => d.fps > 0).length),
+        avgGifts: avg(list, 'gifts'),
         boughtSomethingPct: pct(list.filter((d) => d.buys > 0).length, list.length),
         stages: STAGES.map((s, i) => ({ stage: (i + 1) + ' ' + s.name, reachedPct: pct(list.filter((d) => d.maxStage >= i).length, list.length) })),
     };

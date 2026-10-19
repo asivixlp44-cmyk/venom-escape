@@ -66,6 +66,14 @@ button:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
 #topBar { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 0.6rem); transform: translateX(-50%); display: grid; justify-items: center; gap: 0.5rem; width: max-content; max-width: min(48rem, 60vw); }
 #goal { display: flex; align-items: center; gap: 0.5rem; padding: 0.32rem 1.1rem 0.38rem; border-radius: 1rem; background: rgba(10, 6, 24, 0.6); border: 2px solid rgba(255,255,255,0.16); font-size: 1.32rem; font-weight: 700; text-align: center; line-height: 1.2; }
 #goal.pop { animation: goalIn 0.45s cubic-bezier(0.34, 1.7, 0.5, 1); }
+#goal.act { pointer-events: auto; cursor: pointer; border-color: #ffd24a; background: rgba(40, 20, 70, 0.78); }
+#goal.act::after { content: 'TAP'; margin-left: 0.3rem; padding: 0.05rem 0.45rem; border-radius: 0.5rem; background: #ffd24a; color: #2a1a00; font-size: 0.8em; font-weight: 800; }
+#giftChip { pointer-events: auto; cursor: pointer; height: 2rem; padding: 0 0.8rem; background: linear-gradient(#ff8ab0, #d8306a); color: #fff; font-size: 0.95rem; white-space: nowrap; }
+#giftChip b { font-size: 0.95rem; }
+#giftChip.ready { background: linear-gradient(#fff3a0, #ffb21c); color: #3a2400; animation: giftPulse 0.9s ease-in-out infinite; }
+@keyframes giftPulse { 50% { transform: scale(1.08); } }
+.chunk.nudge { animation: nudgeBob 0.6s ease-in-out 6; }
+@keyframes nudgeBob { 50% { transform: translateX(-0.6rem) scale(1.08); } }
 @keyframes goalIn { 0% { transform: scale(0.82); opacity: 0.2; } 100% { transform: scale(1); opacity: 1; } }
 #statRow { display: flex; align-items: center; gap: 0.5rem; }
 .chip { position: relative; display: flex; align-items: center; gap: 0.35rem; height: 2.4rem; padding: 0 0.7rem 0 0.4rem; border: 3px solid var(--ink); border-radius: 1.3rem; box-shadow: inset 0 -0.22rem 0 rgba(0,0,0,0.18), inset 0 0.18rem 0 rgba(255,255,255,0.35), 0 0.2rem 0 var(--ink); font-weight: 700; }
@@ -359,6 +367,7 @@ body.lowfx .chunk .sheen::after, body.lowfx .loadFace, body.lowfx #trainTag { an
                 <div class="chip" id="stageChip"><div id="stageFill"></div><span class="o1" id="stageText">Lobby</span></div>
                 <div class="chip" id="streakChip" hidden><span class="ico" aria-hidden="true">🔥</span><b class="o1" id="streakVal">2</b></div>
             </div>
+            <button class="chip" id="giftChip" hidden aria-label="Next playtime gift"><b class="o1" id="giftChipT">🎁</b></button>
             <div class="o1" id="boostTag" hidden></div>
         </div>
 

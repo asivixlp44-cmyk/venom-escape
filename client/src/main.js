@@ -28,7 +28,7 @@ import {
 } from './ui.js';
 import {
     CFG, STAGES, KITS, SKINS, TRAIN_PADS, WORLDS, STAGES_PER_WORLD, fmt, clamp, levelOf, tentacleLen, headSpeed, segments, padUnlocked, venomFor, suitOf,
-    firstStageOf, worldOfStage,
+    firstStageOf, worldOfStage, SYMBIOTES, symAvailable,
 } from '../../shared/config.js';
 import {
     LAVA_Y, HW, WALL_TOP, LOBBY, PLATFORMS, LAUNCH, ESCAPES, TRAIN, OBSTACLES, ROUTES, ORBS, HUBS, WORLD_X, stageAt, onPlatform, trainPadAt,
@@ -284,8 +284,12 @@ function die(why) {
     const f = FELL[WORLDS[(P.world || 1) - 1].liquid] || FELL.lava, sp = themeHere().splash;
     flash(f[2], 600); sfx('lava'); addShake(0.8); rumble(0.7, 280);
     lavaSplash(new V3(P.pos.x, LAVA_Y + 0.5, P.pos.z), sp[0], sp[1]);
-    toast((why === 'hazard' ? '💥 Ouch!' : f[0]) + ' Back to your checkpoint', f[1]);
-    net.send('died');
+    // what sent you in (for the play stats, and a better hint): the tentacle ran out, a landing missed
+    // (into the liquid or off a side), a hazard, or walking off an edge
+    const recent = clockT - lastZip.t < 5, tag = !recent ? 'walk' : lastZip.reason === 'empty' ? 'short' : lastZip.reason === 'hazard' ? 'hazard' : 'missed';
+    if (tag === 'short') toast('😬 Your tentacle was too short! Level up: train on a pad or buy a symbiote', '#ffd24a');
+    else toast((tag === 'hazard' ? '💥 Ouch!' : f[0]) + ' Back to your checkpoint', f[1]);
+    net.send('died', { why: tag });
     if (P.mode !== 'walk') endTentacle(true);
     setTimeout(() => respawn(true), 260);
 }
@@ -338,7 +342,7 @@ const TT = {
 // Aim assist (on by default on touch screens and controllers): with the stick near the middle, the
 // head drifts toward the stretch's good line (through windows, round pillars, through boost rings)
 let assistPref = null;
-const assistOn = () => { if (assistPref === null) assistPref = storageGet('ve_assist'); return assistPref === null ? isTouch || pad.connected : assistPref === '1'; };
+const assistOn = () => { if (assistPref === null) assistPref = storageGet('ve_assist'); return assistPref !== '0'; };
 actions.getAssist = () => assistOn();
 actions.setAssist = (on) => { assistPref = on ? '1' : '0'; storageSet('ve_assist', assistPref); };
 function assistPoint(i, tip) {
@@ -376,10 +380,20 @@ function launchPadUnder() {
     }
     return -1;
 }
+let tooShortT = -9;
 function startCast() {
     if (P.mode !== 'walk' || !P.onGround) return false;
     const k = launchPadUnder();
     if (k < 0) return false;
+    const st = STAGES[k], L = level();
+    if (st && tentacleLen(L, S, P.world) < tentacleLen(st.R, null, P.world) * 0.6) {
+        if (clockT - tooShortT > 1.5) {
+            tooShortT = clockT;
+            toast('😬 Too short! Stage ' + (k + 1) + ' needs Level ' + st.R + ' (you\'re ' + L + '). Train or buy a symbiote first', '#ffd24a');
+            sfx('denied'); nudge('#btnTrain'); nudge('#btnSyms');
+        }
+        return true;
+    }
     P.mode = 'cast'; P.modeT = 0;
     TT.pad = k;
     P.hv.set(0, 0, 0); P.kv.set(0, 0, 0); P.vel.y = 0;
@@ -394,6 +408,8 @@ function startCast() {
     return true;
 }
 const suitGlow = () => { const s = suitColors(); return s.glow; };
+// a HUD button bounces for a moment (where to go next)
+function nudge(sel) { const el = $(sel); if (!el) return; el.classList.remove('nudge'); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('nudge'))); clearTimeout(el._nt); el._nt = setTimeout(() => el.classList.remove('nudge'), 3600); }
 function beginGrow() {
     P.mode = 'grow'; P.modeT = 0;
     const L = level();
@@ -566,8 +582,10 @@ function updateZip(dt) {
     locate();
     if (TT.zipS >= TT.zipLen - 0.01) finishZip();
 }
+let lastZip = { t: -99, reason: '' };
 function finishZip() {
     loopSound('zip', 0);
+    lastZip = { t: clockT, reason: TT.reason };
     const tip = TT.tent.tip, d = TT.zipDir.lengthSq() > 0.01 ? TT.zipDir : TT.dir;
     P.pos.set(tip.x, tip.y - CHEST, tip.z);
     P.vel.set(0, 0, 0); P.kv.set(0, 0, 0); P.hv.set(0, 0, 0);
@@ -636,7 +654,7 @@ scene.add(guide);
 let seenLaunch = false, escapedUntil = 0, escapedText = '';
 const goalTarget = new V3();
 function updateGoal(dt) {
-    let text = '', target = null;
+    let text = '', target = null, act = null;
     const w = P.world, L = level(), myLen = tentacleLen(L, S, w);
     const i = P.stage, start = atStart(), last = firstStageOf(w) + STAGES_PER_WORLD - 1;
     if (P.mode === 'cast' || P.mode === 'grow') text = isTouch ? 'Steer with the joystick! Tap JUMP to let go' : 'Steer with A / D (W / S up and down) · SPACE to let go';
@@ -652,13 +670,28 @@ function updateGoal(dt) {
         target = goalTarget.set(E.x, E.y, E.z);
     } else {
         const next = start ? firstStageOf(w) : i + 1, lp = LAUNCH[next];
-        const st = STAGES[next];
+        // training on a pad: aim for the furthest stage you've reached, not the first one
+        const aim = start && P.onTrain >= 0 ? Math.max(next, Math.min(last, S.maxStage || 0)) : next;
+        const st = STAGES[aim];
         if (st && lp && (start || onPlatformLoose(i))) {
             const need = tentacleLen(st.R, null, w);
             if (myLen < need * 0.8) {
-                const b = bestTrainPad();
-                text = '⚡ Stage ' + (next + 1) + ' needs Level ' + st.R + ' (you\'re ' + L + '). Train your Venom' + (b >= 0 && TRAIN[b].w !== w ? ': your best pad is in World ' + TRAIN[b].w + ' (TRAIN button)' : ' in the Train Zone!');
-                if (start && b >= 0 && TRAIN[b].w === w && P.onTrain !== b) target = goalTarget.set(TRAIN[b].x, 0, TRAIN[b].z);
+                const b = bestTrainPad(), sym = affordableSym();
+                if (sym) {
+                    text = '🛒 Stage ' + (aim + 1) + ' needs Level ' + st.R + '. Tap: buy ' + sym.name + ' for +' + fmt(sym.venom) + ' Venom every second!';
+                    act = () => actions.buySym(sym.id);
+                } else if (P.onTrain >= 0 && padUnlocked(S, P.onTrain)) {
+                    text = '⚡ Training x' + fmt(TRAIN_PADS[P.onTrain].mult) + '! Level ' + L + ' → ' + Math.ceil(st.R * 0.8) + ' for Stage ' + (aim + 1) + '. Stay on the pad!';
+                } else {
+                    text = '⚡ Stage ' + (aim + 1) + ' needs Level ' + st.R + ' (you\'re ' + L + '). Tap to train on the x' + (b >= 0 ? fmt(TRAIN_PADS[b].mult) : 2) + ' Venom pad!';
+                    act = () => actions.goTrain && actions.goTrain();
+                    if (start && b >= 0 && TRAIN[b].w === w) target = goalTarget.set(TRAIN[b].x, 0, TRAIN[b].z);
+                }
+            } else if (start && P.onTrain >= 0 && Math.hypot(lp.x - P.pos.x, lp.z - P.pos.z) > 30) {
+                // trained up: straight back to the launch pad
+                text = '✅ Level ' + L + ': strong enough for Stage ' + (aim + 1) + '! Tap to go to the launch pad';
+                act = () => { if (P.mode === 'walk') teleport(new V3(lp.x, lp.y + 0.3, lp.z - 2), 0, true); };
+                target = goalTarget.set(lp.x, lp.y, lp.z);
             } else if (!(S.totalWins > 0) && !seenLaunch) {
                 text = 'Jump to the pad to earn your first Win!';
                 target = goalTarget.set(lp.x, lp.y, lp.z);
@@ -669,7 +702,7 @@ function updateGoal(dt) {
             if (isTouch && P.onLaunch >= 0) text = '🕷️ Tap RELEASE VENOM!';
         }
     }
-    setGoal(text);
+    setGoal(text, act);
     // the ribbon: from your feet to the target
     const show = !!target && P.mode === 'walk' && Math.hypot(target.x - P.pos.x, target.z - P.pos.z) > 7;
     guide.visible = show;
@@ -686,6 +719,12 @@ function updateGoal(dt) {
 }
 const onPlatformLoose = (i) => onPlatform(i, P.pos.x, P.pos.y, P.pos.z, 2);
 function bestTrainPad() { let b = -1; for (let k = 0; k < TRAIN_PADS.length; k++) if (padUnlocked(S, k)) b = k; return b; }
+// the cheapest symbiote you can buy right now (and haven't), or null
+function affordableSym() {
+    let best = null;
+    for (const s of SYMBIOTES) if (!(S.syms && S.syms[s.id]) && symAvailable(S, s) && (S.wins || 0) >= s.price && (!best || s.price < best.price)) best = s;
+    return best;
+}
 actions.trainPad = (i) => {
     if (padUnlocked(S, i)) return;
     const d = TRAIN_PADS[i];
@@ -1443,6 +1482,9 @@ function update(dt) {
     animateCounters(dt);
     setMeter(meterState());
     setLaunch(P.mode === 'walk' && P.onLaunch >= 0, isTouch);
+    S.flying = P.mode !== 'walk';
+    infoT -= dt;
+    if (infoT <= 0) { infoT = 60; sendClientInfo(); }
     hudT -= dt;
     if (hudT <= 0) {
         hudT = 0.1;
@@ -1457,7 +1499,13 @@ function update(dt) {
 // =====================================================================================
 let lastFrame = 0, loadingSignaled = false, fpsAcc = 0, fpsFrames = 0, showFps = false;
 const fpsWatch = { t: 0, low: 0 };
+let fpsSum = 0, fpsN = 0, infoT = 8;
+function sendClientInfo() {
+    if (!net.room || !fpsN) return;
+    net.send('client', { touch: isTouch, q: getQuality(), fps: Math.round(fpsSum / fpsN) });
+}
 function watchFps(fps) {
+    if (running && !document.hidden) { fpsSum += fps; fpsN++; }
     if (!running || document.hidden || !autoQualityAllowed()) return;
     fpsWatch.t += 0.5;
     if (fpsWatch.t < 2) return;

@@ -64,12 +64,21 @@ export const worldOfStage = (i) => Math.max(1, Math.min(WORLDS.length, Math.floo
 export const firstStageOf = (w) => (w - 1) * STAGES_PER_WORLD;
 
 // ----- levels and the tentacle -----
-// Total Venom needed to reach level L (level 1 = 0 Venom): steep through World 1, gentler after
-// level 95 (the later worlds' multipliers are much bigger)
+// Total Venom needed to reach level L (level 1 = 0 Venom). The first levels come every few seconds
+// (a new player levels up constantly and reaches the first stages within minutes); from level 40 on
+// it is the long curve: steep through World 1, gentler after level 95 (the later worlds' multipliers
+// are much bigger). In between the two blend smoothly (in log space, so it always rises).
+const EARLY_UNTIL = 40;
+function venomCurve(L) {
+    const base = 40 * (L - 1) ** 2;
+    return L <= 95 ? base * 1.165 ** (L - 1) : base * 1.165 ** 94 * 1.07 ** (L - 95);
+}
 export function venomFor(L) {
     if (L <= 1) return 0;
-    const base = 40 * (L - 1) ** 2;
-    return Math.round(L <= 95 ? base * 1.165 ** (L - 1) : base * 1.165 ** 94 * 1.07 ** (L - 95));
+    const late = venomCurve(L);
+    if (L >= EARLY_UNTIL) return Math.round(late);
+    const early = 10 * (L - 1) ** 1.75, t = (L - 1) / (EARLY_UNTIL - 1), w = t * t * (3 - 2 * t);
+    return Math.round(Math.exp(Math.log(early) + w * (Math.log(late) - Math.log(early))));
 }
 export function levelOf(venom) {
     let lo = 1, hi = 600;
@@ -266,9 +275,11 @@ export function winsMult(p, now, friends) {
 }
 
 // ----- playtime gifts (minutes played this session) -----
+// Playtime gifts: one every couple of minutes at first, a free symbiote at 10 minutes and 30
 export const GIFTS = [
-    { min: 2, wins: 5 }, { min: 5, wins: 10 }, { min: 10, venomBoost: true }, { min: 15, wins: 25 },
-    { min: 20, boost: true }, { min: 30, wins: 60 }, { min: 45, wins: 120 }, { min: 60, wins: 250 },
+    { min: 1, wins: 3 }, { min: 3, wins: 8 }, { min: 5, venomBoost: true }, { min: 7, wins: 20 },
+    { min: 10, sym: 'thunder' }, { min: 15, boost: true }, { min: 20, wins: 80 }, { min: 30, sym: 'viper' },
+    { min: 45, wins: 300 }, { min: 60, wins: 600 },
 ];
 // ----- daily rewards (7-day streak) -----
 export const DAILY = [

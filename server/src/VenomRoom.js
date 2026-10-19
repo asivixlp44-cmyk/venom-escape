@@ -52,6 +52,7 @@ export class VenomRoom extends Room {
         on('lobby', this.onLobby);
         on('tp', this.onTeleport);
         on('died', this.onDied);
+        on('client', this.onClientInfo);
         on('launch', this.onLaunch);
         on('world', this.onWorld);
         on('orb', this.onOrb);
@@ -110,7 +111,7 @@ export class VenomRoom extends Room {
             pos: { x: SPAWN.x, y: SPAWN.y, z: SPAWN.z },
             run: newRun(-1), padAt: {}, onPad: -1, rate: 0, streak: 0, lastOrb: 0,
             joinedAt: Date.now(), giftClaimed: {}, friends: 0, guest, lastChat: 0, playSecs: 0, offline: 0,
-            stats: { fresh: Date.now() - (profile.firstPlay || 0) < 60000, maxStage: -1, escapes: 0, deaths: 0, launches: 0, wins0: profile.totalWins, buys: 0, rebirths: 0 },
+            stats: { fresh: Date.now() - (profile.firstPlay || 0) < 60000, maxStage: -1, escapes: 0, deaths: 0, launches: 0, wins0: profile.totalWins, buys: 0, rebirths: 0, dBy: {}, touch: false, q: '', fps: 0, gifts: 0 },
         };
         this.sessions.set(client.sessionId, s);
         // Offline earnings: a share of your Venom per second for the time you were away
@@ -164,6 +165,7 @@ export class VenomRoom extends Room {
             at: new Date(), secs: Math.round((Date.now() - s.joinedAt) / 1000), fresh: st.fresh, maxStage: st.maxStage,
             level: levelOf(s.profile.venom), world: s.profile.world || 1, escapes: st.escapes, deaths: st.deaths, launches: st.launches,
             wins: (s.profile.totalWins || 0) - (st.wins0 || 0), buys: st.buys, rebirths: st.rebirths,
+            dBy: st.dBy, touch: st.touch, q: st.q, fps: st.fps, gifts: st.gifts,
         }).catch((e) => console.warn('[stats]', e.message));
         if (!isOnline(s.profile.uid)) releaseProfile(s.profile.uid, isOnline);
     }
@@ -362,14 +364,25 @@ export class VenomRoom extends Room {
         client.send('tpTo', { i });
         this.changed(client.sessionId);
     }
-    onDied(client) {
+    onDied(client, m) {
         const s = this.sessions.get(client.sessionId);
         if (!s) return;
         s.stats.deaths++;
+        // what sent them in: a tentacle too short, a missed landing, a hazard, walking off an edge
+        const why = ['short', 'missed', 'hazard', 'walk', 'other'].includes(m && m.why) ? m.why : 'other';
+        s.stats.dBy[why] = (s.stats.dBy[why] || 0) + 1;
         s.profile.deaths = (s.profile.deaths || 0) + 1;
         // back at the checkpoint: the run carries on from there (the streak doesn't)
         s.run.at = runStartOf(s.profile.stage);
         s.streak = 0;
+    }
+    // The player's device: touch screen, graphics quality, frame rate (for the play stats)
+    onClientInfo(client, m) {
+        const s = this.sessions.get(client.sessionId);
+        if (!s || !m) return;
+        s.stats.touch = !!m.touch;
+        s.stats.q = String(m.q || '').slice(0, 8);
+        if (finite(m.fps)) s.stats.fps = clamp(Math.round(m.fps), 0, 240);
     }
     onLaunch(client) { const s = this.sessions.get(client.sessionId); if (s) s.stats.launches++; }
 
@@ -496,6 +509,7 @@ export class VenomRoom extends Room {
         if (!s || !g || s.giftClaimed[k]) return;
         if (s.playSecs < g.min * 60 - 2) return this.toast(s, 'Keep playing to unlock this gift!', BLUE);
         s.giftClaimed[k] = true;
+        s.stats.gifts++;
         this.giveReward(s, g);
         this.toast(s, '🎁 ' + rewardText(g) + '!', GREEN);
         client.send('fx', { kind: 'confetti' });
