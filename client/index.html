@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>+1 Venom Escape</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 62 18 80 14 80 34 94 46 84 62 88 82 66 84 50 96 34 84 12 82 16 62 6 46 20 34 20 14 38 18Z' fill='%2312121a' stroke='%23c8ff3a' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M46 46 24 32 34 60Z M54 46 76 32 66 60Z' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Montserrat:wght@800&display=swap">
+<style>
+:root {
+    color-scheme: light;
+    --ink: #0e0a1e;
+    --lime: #c8ff3a;
+    --purple: #8a3aff;
+    --cyan: #3af0ff;
+    --gold: #ffd028;
+    --red: #ff3a4a;
+    --white: #ffffff;
+    --font: "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+    font-size: clamp(9px, calc(100vmin / 56), 17px);
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: #6ab8ff; }
+body { font-family: var(--font); color: var(--white); user-select: none; -webkit-user-select: none; touch-action: none; }
+#app { position: fixed; inset: 0; }
+#view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; }
+#speedLines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+/* a soft vignette drawn by the page, not by a post pass (free) */
+#vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(30, 8, 40, 0.22) 100%); }
+button { font-family: var(--font); cursor: pointer; color: var(--white); }
+button:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+
+.o { text-shadow: -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink), 2px 2px 0 var(--ink), 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink), 0 3px 0 var(--ink); }
+.o1 { text-shadow: -1px -1px 0 var(--ink), 1px -1px 0 var(--ink), -1px 1px 0 var(--ink), 1px 1px 0 var(--ink), 0 1.5px 0 var(--ink); }
+
+.btn {
+    border: 3px solid var(--ink); border-radius: 0.8rem; font-weight: 700;
+    box-shadow: inset 0 -0.3rem 0 rgba(0, 0, 0, 0.22), inset 0 0.2rem 0 rgba(255, 255, 255, 0.35), 0 0.2rem 0 var(--ink);
+    transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1), filter 0.15s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.04); filter: brightness(1.08); }
+.btn:active:not(:disabled) { transform: translateY(2px) scale(0.95); transition-duration: 0.06s; }
+.btn:disabled { filter: grayscale(0.7) brightness(0.85); cursor: default; }
+.g-yellow { background: linear-gradient(#fff07a, #ffc414); }
+.g-green { background: linear-gradient(#b8ff5a, #3ac81a); }
+.g-blue { background: linear-gradient(#7ae6ff, #1f8fff); }
+.g-red { background: linear-gradient(#ff7a8a, #e8182c); }
+.g-purple { background: linear-gradient(#c88aff, #6a1cdf); }
+.g-pink { background: linear-gradient(#ffa8d0, #ff3f8a); }
+.g-grey { background: linear-gradient(#b8bccc, #6a7084); }
+.g-gold { background: linear-gradient(#fff2a0, #ffb81c); }
+@keyframes shine { 0%, 82% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(160%) skewX(-20deg); } }
+
+/* HUD ------------------------------------------------------------------ */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud > * { pointer-events: auto; }
+#hud .passive { pointer-events: none; }
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#tpFx { position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(-55deg, #2a1050 0 4rem, #120626 4rem 9rem); opacity: 0; }
+#tpFx.go { animation: tp 0.6s ease forwards; }
+@keyframes tp { 0% { opacity: 0; } 25% { opacity: 0.8; } 70% { opacity: 0.8; } 100% { opacity: 0; } }
+
+/* Top centre: the objective, then Wins / Venom / Stage */
+#topBar { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 0.6rem); transform: translateX(-50%); display: grid; justify-items: center; gap: 0.5rem; width: max-content; max-width: min(48rem, 60vw); }
+#goal { display: flex; align-items: center; gap: 0.5rem; padding: 0.32rem 1.1rem 0.38rem; border-radius: 1rem; background: rgba(10, 6, 24, 0.6); border: 2px solid rgba(255,255,255,0.16); font-size: 1.32rem; font-weight: 700; text-align: center; line-height: 1.2; }
+#goal.pop { animation: goalIn 0.45s cubic-bezier(0.34, 1.7, 0.5, 1); }
+@keyframes goalIn { 0% { transform: scale(0.82); opacity: 0.2; } 100% { transform: scale(1); opacity: 1; } }
+#statRow { display: flex; align-items: center; gap: 0.5rem; }
+.chip { position: relative; display: flex; align-items: center; gap: 0.35rem; height: 2.4rem; padding: 0 0.7rem 0 0.4rem; border: 3px solid var(--ink); border-radius: 1.3rem; box-shadow: inset 0 -0.22rem 0 rgba(0,0,0,0.18), inset 0 0.18rem 0 rgba(255,255,255,0.35), 0 0.2rem 0 var(--ink); font-weight: 700; }
+.chip .ico { font-size: 1.5rem; line-height: 1; filter: drop-shadow(0 0.1rem 0 rgba(0,0,0,0.35)); }
+.chip b { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+#winsChip { background: linear-gradient(#fff3a0, #ffc21c); color: #3a2400; min-width: 7.5rem; }
+#winsChip b { flex: 1; text-align: center; }
+#winsChip.bump { animation: bump 0.45s cubic-bezier(0.34, 1.8, 0.5, 1); }
+@keyframes bump { 35% { transform: scale(1.15); } }
+#winsPlus { width: 1.6rem; height: 1.6rem; padding: 0; font-size: 1.15rem; line-height: 1; border-radius: 50%; border-width: 2px; display: grid; place-items: center; margin-right: -0.4rem; }
+#venomChip { background: linear-gradient(#3a2470, #160a30); min-width: 9rem; }
+#venomChip b { color: var(--lime); }
+#venomRate { font-size: 0.9rem; color: #e8d0ff; }
+#stageChip { position: relative; width: auto; min-width: 9rem; padding: 0 0.8rem; overflow: hidden; background: rgba(14,10,30,0.7); justify-content: center; white-space: nowrap; }
+#streakChip { background: linear-gradient(#ffb04a, #e8420a); color: #fff; padding: 0 0.75rem 0 0.4rem; }
+#streakChip b { font-size: 1.2rem; }
+#streakChip small { font-size: 0.8rem; margin-left: 0.3rem; color: #fff6c8; }
+#streakChip.bump { animation: bump 0.45s cubic-bezier(0.34, 1.8, 0.5, 1); }
+.drain { font-size: 0.82em; color: #ffb4c8; white-space: nowrap; }
+#escUnlock { margin-top: 0.4rem; font-size: 1.5rem; font-weight: 800; color: #9affea; }
+#worldLoad { z-index: 25; background: radial-gradient(circle at 50% 45%, rgba(40,20,80,0.92), rgba(6,2,16,0.97)); }
+#worldLoad.wl2 { background: radial-gradient(circle at 50% 45%, rgba(20,70,20,0.94), rgba(4,14,4,0.98)); }
+#worldLoad.wl3 { background: radial-gradient(circle at 50% 45%, rgba(70,30,130,0.94), rgba(6,2,20,0.98)); }
+#worldLoadT { font-size: 2.4rem; font-weight: 800; }
+#worldLoadS { font-size: 1.3rem; color: #e8d0ff; }
+#stageFill { position: absolute; left: 0; top: 0; bottom: 0; width: 4%; background: linear-gradient(#ff9a3a, #e8401a); transition: width 0.6s cubic-bezier(0.3, 1.3, 0.5, 1); }
+#stageText { position: relative; font-size: 1.05rem; }
+#boostTag { font-size: 0.95rem; font-weight: 700; color: #fff06a; }
+
+/* Left: the level ring */
+#levelCard { position: absolute; left: max(1rem, calc(env(safe-area-inset-left, 0px) + 0.6rem)); top: max(10rem, 30vh); display: grid; justify-items: center; gap: 0.3rem; }
+#lvRing { position: relative; width: 7.6rem; height: 7.6rem; border-radius: 50%; background: conic-gradient(var(--lime) calc(var(--p, 0) * 360deg), rgba(255,255,255,0.14) 0); box-shadow: 0 0 0 0.25rem var(--ink), 0 0.4rem 1rem rgba(20,0,40,0.4); }
+#lvRing::before { content: ''; position: absolute; inset: 0.55rem; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #4a2a8a, #140828 70%); box-shadow: inset 0 0 0 0.18rem var(--ink); }
+#lvFace { position: absolute; inset: 1rem; background: center / contain no-repeat; }
+#lvBadge { position: absolute; left: 50%; bottom: -0.9rem; transform: translateX(-50%); display: flex; align-items: baseline; gap: 0.15rem; padding: 0.05rem 0.6rem 0.1rem; border: 3px solid var(--ink); border-radius: 1rem; background: linear-gradient(#e8ff8a, #7ad81a); color: #142400; box-shadow: 0 0.2rem 0 var(--ink); }
+#lvBadge small { font-size: 0.8rem; font-weight: 700; }
+#lvBadge b { font-size: 1.35rem; }
+#lvInfo { margin-top: 0.7rem; display: grid; justify-items: center; line-height: 1.1; }
+#lvInfo .t { font-size: 0.95rem; font-weight: 700; color: #e8d0ff; }
+#lvLen { font-size: 1.3rem; font-weight: 700; }
+#lvLen b { color: var(--lime); }
+#lvNext { font-size: 0.8rem; font-weight: 600; opacity: 0.95; max-width: 9rem; text-align: center; }
+
+/* Right: Symbiotes / Train / Rebirth / x2 Venom */
+.chunk { position: relative; display: flex; align-items: center; justify-content: center; gap: 0.3rem; height: 3.2rem; padding: 0 2.5rem 0 1rem; border: 0.2rem solid var(--ink); border-radius: 0.5rem; font-size: 1.45rem; font-weight: 700; color: #fff; box-shadow: inset 0 -0.35rem 0 rgba(0,0,0,0.22), inset 0 0.25rem 0 rgba(255,255,255,0.35), 0 0.22rem 0 var(--ink), 0 0.4rem 0.9rem rgba(20,0,40,0.25); overflow: visible; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); white-space: nowrap; }
+.chunk:hover { transform: translateY(-2px) scale(1.04); }
+.chunk:active { transform: translateY(2px) scale(0.95); }
+.chunk .ico { position: absolute; right: -1rem; top: 50%; transform: translateY(-55%) rotate(-10deg); font-size: 2.4rem; line-height: 1; filter: drop-shadow(0 0.15rem 0 rgba(0,0,0,0.35)); pointer-events: none; }
+.chunk .sub { position: absolute; left: 0; right: 0; bottom: -1.15rem; text-align: center; font-size: 0.9rem; color: var(--lime); }
+.chunk .sheen { position: absolute; inset: 0; overflow: hidden; border-radius: 0.3rem; pointer-events: none; }
+.chunk .sheen::after { content: ''; position: absolute; top: 0; bottom: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.45), transparent); transform: translateX(-120%) skewX(-20deg); animation: shine 5s ease-in-out infinite; }
+.c-purple { background: linear-gradient(#b05aff, #5a14c8); }
+.c-blue { background: linear-gradient(#5ad8ff, #1a6ae8); }
+.c-lime { background: linear-gradient(#d8ff5a, #4ab81a); }
+.c-rebirth { background: linear-gradient(100deg, #ff5ad8, #8a3aff 55%, #3a8aff); }
+#rightCol { position: absolute; right: max(1.6rem, calc(env(safe-area-inset-right, 0px) + 1.2rem)); top: max(9rem, 25vh); display: grid; gap: 1.2rem; justify-items: end; }
+#rightCol .chunk { min-width: 11.5rem; }
+#btnRebirth .rb { position: absolute; left: 0.5rem; right: 0.5rem; bottom: -0.95rem; height: 1.2rem; border-radius: 0.6rem; border: 2px solid var(--ink); background: #1a0a30; overflow: hidden; }
+#rbFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(#ff9aff, #b45aff); }
+#rbText { position: relative; display: block; text-align: center; font-size: 0.78rem; line-height: 1rem; }
+#rbMult { font-size: 1rem; color: #fff06a; margin-left: 0.2rem; }
+#btnRebirth.ready .rb { box-shadow: 0 0 0.6rem #ff9aff; }
+#btnX2.own { filter: saturate(0.6); }
+.badge { position: absolute; top: -0.4rem; right: -0.3rem; background: var(--red); border: 2px solid var(--ink); border-radius: 1rem; font-size: 0.78rem; padding: 0.02rem 0.36rem; font-weight: 700; z-index: 2; color: #fff; }
+
+/* Top right: the menu icons (the top left is the Bloxity overlay's) */
+#iconRow { position: absolute; right: max(0.6rem, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 0.6rem); display: flex; gap: 0.3rem; }
+.ib { position: relative; width: 3.3rem; height: 3.75rem; padding: 0; border: 0; background: none; cursor: pointer; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); }
+.ib .bub { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; margin: 0 auto; border-radius: 0.9rem; border: 0.18rem solid var(--ink); background: var(--bg, linear-gradient(#fff, #d8e8ff)); font-size: 1.45rem; box-shadow: inset 0 0.2rem 0 rgba(255,255,255,0.6), inset 0 -0.25rem 0 rgba(0,0,0,0.12), 0 0.18rem 0 var(--ink); }
+.ib .lb { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); font-size: 0.72rem; font-weight: 700; line-height: 1; white-space: nowrap; }
+.ib:hover { transform: translateY(-2px) scale(1.08); }
+.ib:active { transform: translateY(1px) scale(0.92); }
+#fps { position: absolute; right: max(1rem, env(safe-area-inset-right, 0px)); bottom: 0.6rem; font-size: 0.85rem; font-weight: 700; color: #7dff6b; }
+#friendBoost { position: absolute; left: max(0.8rem, env(safe-area-inset-left, 0px)); bottom: max(0.5rem, env(safe-area-inset-bottom, 0px)); font-size: 1rem; font-weight: 700; color: #c8ff7a; }
+
+/* Bottom centre: RELEASE VENOM, the tentacle meter, training */
+#launchBtn { position: absolute; left: 50%; bottom: max(6.5rem, 15vh); transform: translateX(-50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 1.6rem 0.65rem; font-size: 2rem; border: 0.25rem solid var(--ink); border-radius: 1.4rem; background: linear-gradient(#5affff, #1a8aff 45%, #5a1ad8); box-shadow: inset 0 -0.4rem 0 rgba(0,0,0,0.25), inset 0 0.3rem 0 rgba(255,255,255,0.4), 0 0.3rem 0 var(--ink); animation: launchPulse 1s ease-in-out infinite; }
+#launchBtn kbd { display: inline-grid; place-items: center; padding: 0.05rem 0.5rem; border-radius: 0.5rem; background: #fff; color: var(--ink); font-family: var(--font); font-size: 1rem; text-shadow: none; box-shadow: 0 0.15rem 0 var(--ink); }
+@keyframes launchPulse { 50% { transform: translateX(-50%) scale(1.07); } }
+#meter { position: absolute; left: 50%; bottom: max(7rem, 16vh); transform: translateX(-50%); display: grid; justify-items: center; gap: 0.25rem; pointer-events: none; }
+#meter .row1 { display: flex; align-items: center; gap: 0.5rem; }
+.steer { width: 3.6rem; height: 3rem; padding: 0; border: 0; background: none; font-size: 2.4rem; line-height: 1; color: #b8ffd8; filter: drop-shadow(0 0.15rem 0 var(--ink)); pointer-events: auto; transition: transform 0.12s ease; }
+.steer:active { transform: scale(0.85); }
+#steerU, #steerD { display: none; }
+#meterBar { position: relative; width: min(22rem, 52vw); height: 2.2rem; border: 0.2rem solid var(--ink); border-radius: 0.6rem; background: #1a1430; box-shadow: 0 0.2rem 0 var(--ink); overflow: hidden; }
+#meterFill { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: linear-gradient(#7af6ff, #1aa8e8); transition: width 0.1s linear; }
+#meter.low #meterFill { background: linear-gradient(#ffb07a, #ff4a2a); }
+#meterText { position: absolute; inset: 0; display: grid; place-items: center; font-size: 1.35rem; font-weight: 700; }
+#meterKnob { position: absolute; left: 50%; top: -1.1rem; width: 1.6rem; height: 1.6rem; margin-left: -0.8rem; border-radius: 50%; background: #fff; border: 0.18rem solid var(--ink); box-shadow: 0 0.12rem 0 var(--ink); }
+#meterWrap { position: relative; }
+#meterHint { font-size: 1.05rem; font-weight: 700; }
+#trainTag { position: absolute; left: 50%; bottom: max(4.5rem, 10vh); transform: translateX(-50%); font-size: 1.6rem; font-weight: 700; color: #fff; white-space: nowrap; animation: trainBob 1.2s ease-in-out infinite; }
+#trainTag b { color: var(--lime); font-size: 1.15em; }
+@keyframes trainBob { 50% { transform: translateX(-50%) translateY(-0.3rem); } }
+
+/* Banners */
+#stageTitle { position: absolute; left: 50%; top: 11rem; transform: translateX(-50%); width: max-content; max-width: 92vw; text-align: center; pointer-events: none; }
+#stageTitle .n { white-space: nowrap; font-size: 2.7rem; font-weight: 700; }
+#stageTitle .s { font-size: 1.15rem; font-weight: 600; margin-top: 0.15rem; }
+#stageTitle.go { animation: fadeHold 3.2s ease forwards; }
+@keyframes fadeHold { 0% { opacity: 0; transform: translateX(-50%) scale(0.8); } 10% { opacity: 1; transform: translateX(-50%) scale(1.05); } 18%, 85% { opacity: 1; transform: translateX(-50%) scale(1); } 100% { opacity: 0; } }
+#clearBanner { position: absolute; left: 50%; top: 10.5rem; transform: translateX(-50%); text-align: center; pointer-events: none; white-space: nowrap; }
+#clearBanner .t { font-family: "Montserrat", var(--font); font-size: 3.3rem; font-weight: 800; color: var(--lime); letter-spacing: 0.02em; }
+#clearBanner .s { font-size: 1.25rem; font-weight: 700; margin-top: 0.2rem; }
+#clearBanner.go .t { animation: clearPop 2.4s cubic-bezier(0.2, 1.5, 0.4, 1) forwards; }
+#clearBanner.go .s { animation: clearFade 2.4s ease forwards; }
+@keyframes clearPop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 15% { transform: scale(1.12) rotate(2deg); opacity: 1; } 25% { transform: scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-1rem) scale(0.96); } }
+@keyframes clearFade { 0%, 12% { opacity: 0; } 25%, 85% { opacity: 1; } 100% { opacity: 0; } }
+#winPop { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); pointer-events: none; text-align: center; }
+#winPopT { font-family: "Montserrat", var(--font); font-size: 3.6rem; font-weight: 800; color: #ffe24a; white-space: nowrap; }
+#winPop.bonus #winPopT { color: #f0b4ff; }
+#winPop.go #winPopT { animation: winPop 1.9s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
+@keyframes winPop { 0% { transform: scale(0.2) rotate(-12deg); opacity: 0; } 15% { transform: scale(1.18) rotate(3deg); opacity: 1; } 25% { transform: scale(1); } 80% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-2rem); } }
+#lvUp { position: absolute; left: 50%; top: 30%; transform: translateX(-50%); text-align: center; pointer-events: none; }
+#lvUpT { font-family: "Montserrat", var(--font); font-size: 3rem; font-weight: 800; color: var(--lime); white-space: nowrap; }
+#lvUpS { font-size: 1.3rem; font-weight: 700; }
+#lvUp.go { animation: lvIn 2s ease forwards; }
+@keyframes lvIn { 0% { opacity: 0; transform: translateX(-50%) scale(0.5); } 12% { opacity: 1; transform: translateX(-50%) scale(1.15); } 22%, 80% { opacity: 1; transform: translateX(-50%) scale(1); } 100% { opacity: 0; transform: translateX(-50%) translateY(-1.2rem); } }
+#cheer { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 1.9rem; font-weight: 700; color: #ffe24a; white-space: nowrap; pointer-events: none; }
+#cheer.go { animation: lvIn 2.6s ease forwards; }
+#escBanner, #reborn { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+#escBanner .rays, #reborn .rays { position: absolute; left: 50%; top: 50%; width: 140vmax; height: 140vmax; margin: -70vmax 0 0 -70vmax; background: repeating-conic-gradient(rgba(255, 220, 120, 0.25) 0deg 10deg, transparent 10deg 20deg); animation: spin 14s linear infinite; mask-image: radial-gradient(circle, #000 15%, transparent 55%); -webkit-mask-image: radial-gradient(circle, #000 15%, transparent 55%); }
+#reborn .rays { background: repeating-conic-gradient(rgba(214, 138, 255, 0.28) 0deg 10deg, transparent 10deg 20deg); }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* colour on the move: titles cycle through the rainbow, the release button and the level ring glow
+   with turning colours (filter / transform animations, which the compositor runs) */
+@keyframes hueSpin { to { filter: hue-rotate(360deg); } }
+#clearBanner.go { animation: hueSpin 2.2s linear infinite; }
+#lvUp.go #lvUpT { animation: hueSpin 1.6s linear infinite; }
+#escBanner.go .t, #reborn.go .t { animation: bigPop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1), hueSpin 2.4s linear infinite; }
+#winPop.bonus.go #winPopT { animation: winPop 1.9s cubic-bezier(0.2, 1.6, 0.4, 1) forwards, hueSpin 1.2s linear infinite; }
+#worldLoadT { animation: hueSpin 3s linear infinite; }
+#launchBtn { animation: launchPulse 1s ease-in-out infinite, hueSpin 4s linear infinite; will-change: transform, filter; }
+#clearBanner, #escBanner .t, #reborn .t, #lvUpT, #winPopT { will-change: filter; }
+#lvGlow { position: absolute; left: 50%; top: -0.45rem; width: 8.5rem; height: 8.5rem; margin-left: -4.25rem; border-radius: 50%; background: conic-gradient(#ff5ad8, #ffd23a, #5aff8a, #5af0ff, #9a5aff, #ff5ad8); opacity: 0.9; animation: spin 4s linear infinite; pointer-events: none; will-change: transform; }
+.card.rainbow { animation: hueSpin 3s linear infinite; }
+body.lowfx #launchBtn { animation: launchPulse 1s ease-in-out infinite; }
+body.lowfx #lvGlow { animation: none; }
+#escBanner .t, #reborn .t { position: relative; font-family: "Montserrat", var(--font); font-size: 4.2rem; font-weight: 800; color: #ffe050; }
+#reborn .t { color: #f0b4ff; }
+#escBanner .s, #reborn .s { position: relative; font-size: 1.6rem; font-weight: 700; }
+#escBanner.go .t, #reborn.go .t { animation: bigPop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes bigPop { 0% { transform: scale(0.2) rotate(-12deg); } 100% { transform: scale(1); } }
+
+#toasts { position: absolute; left: 50%; top: 13.5rem; transform: translateX(-50%); width: min(44rem, 92vw); display: grid; justify-items: center; gap: 0.3rem; pointer-events: none; }
+.toast { font-size: 1.2rem; font-weight: 700; padding: 0.1rem 0.5rem; animation: toastIn 2.8s ease forwards; text-align: center; line-height: 1.25; }
+@keyframes toastIn { 0% { opacity: 0; transform: translateY(0.6rem) scale(0.85); } 10% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-0.6rem); } }
+#tips { position: absolute; left: 50%; bottom: 1.2rem; transform: translateX(-50%); display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; font-size: 0.95rem; font-weight: 600; transition: opacity 0.8s ease; pointer-events: none; max-width: 90vw; }
+#tips kbd { display: inline-block; padding: 0.05rem 0.4rem; margin-right: 0.3rem; border: 2px solid #fff; border-radius: 0.35rem; background: rgba(20,10,40,0.6); font-family: var(--font); font-size: 0.85rem; }
+#promptBtn { position: absolute; left: 0; top: 0; transform: translate(-50%, -110%); will-change: transform; display: flex; align-items: center; gap: 0.45rem; padding: 0.3rem 0.7rem 0.3rem 0.35rem; background: rgba(20, 10, 40, 0.84); border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 0.8rem; font-size: 1rem; font-weight: 700; white-space: nowrap; }
+#promptBtn kbd { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 0.4rem; background: #fff; color: var(--ink); font-family: var(--font); font-weight: 700; }
+#promptBtn.passive kbd { display: none; }
+#promptBtn.passive { padding-left: 0.7rem; border-color: var(--lime); color: var(--lime); }
+
+/* Touch controls */
+#touch { position: absolute; inset: 0; pointer-events: none; }
+#stick { position: absolute; left: max(1.4rem, env(safe-area-inset-left, 0px)); bottom: max(2.6rem, env(safe-area-inset-bottom, 0px)); width: 8.5rem; height: 8.5rem; border-radius: 50%; background: rgba(255,255,255,0.18); border: 3px solid rgba(255,255,255,0.5); pointer-events: auto; touch-action: none; }
+#knob { position: absolute; left: 50%; top: 50%; width: 3.6rem; height: 3.6rem; margin: -1.8rem 0 0 -1.8rem; border-radius: 50%; background: rgba(255,255,255,0.8); border: 3px solid var(--ink); }
+#jumpBtn { position: absolute; right: max(1.4rem, env(safe-area-inset-right, 0px)); bottom: max(2.6rem, env(safe-area-inset-bottom, 0px)); width: 6rem; height: 6rem; border-radius: 50%; font-size: 1.2rem; pointer-events: auto; }
+body.touch #steerU, body.touch #steerD { display: block; }
+body.touch #levelCard { top: max(7rem, 20vh); transform: scale(0.8); transform-origin: left top; }
+body.touch #rightCol { top: max(7rem, 20vh); gap: 0.9rem; }
+body.touch #rightCol .chunk { height: 2.6rem; min-width: 9rem; font-size: 1.15rem; }
+body.touch .chunk .ico { font-size: 1.9rem; }
+body.touch #launchBtn { bottom: max(10rem, 22vh); }
+body.touch #friendBoost { display: none; }
+
+/* Panels ---------------------------------------------------------------- */
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 4, 24, 0.45); z-index: 20; }
+.panel { position: relative; width: min(50rem, 94vw); max-height: min(40rem, 88vh); display: grid; grid-template-rows: auto auto 1fr; background: radial-gradient(120% 80% at 50% 0%, #6a3ab8 0%, #2e1460 45%, #140828 100%); border: 4px solid var(--ink); border-radius: 1.2rem; box-shadow: inset 0 0.3rem 0 rgba(255,255,255,0.25), 0 0.5rem 0 var(--ink), 0 1rem 2rem rgba(10,0,30,0.5); animation: panelIn 0.3s cubic-bezier(0.34, 1.6, 0.5, 1); }
+.panel::before { content: ''; position: absolute; left: 0.4rem; right: 0.4rem; top: 0.35rem; height: 34%; border-radius: 1rem 1rem 2rem 2rem; background: linear-gradient(rgba(255,255,255,0.14), rgba(255,255,255,0)); pointer-events: none; }
+@keyframes panelIn { 0% { transform: scale(0.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.panel header { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.9rem 0.2rem; }
+.panel h2 { margin: 0; font-size: 2.2rem; transform: rotate(-3deg); color: var(--lime); }
+.x { width: 2.6rem; height: 2.6rem; padding: 0; font-size: 1.3rem; }
+.tabs { display: flex; gap: 0.35rem; padding: 0 0.9rem 0.35rem; flex-wrap: wrap; }
+.tabs button { font-size: 0.95rem; padding: 0.25rem 0.75rem; border-width: 2px; }
+.tabs button.on { background: linear-gradient(#f0ffc8, #c8ff3a); color: var(--ink); text-shadow: none; }
+.body { overflow-y: auto; padding: 0.3rem 0.9rem 0.9rem; display: grid; gap: 0.5rem; align-content: start; }
+.body::-webkit-scrollbar { width: 0.6rem; } .body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.5); border-radius: 1rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.4rem, 1fr)); gap: 0.5rem; }
+.card { position: relative; display: grid; justify-items: center; align-content: start; gap: 0.2rem; padding: 0.5rem 0.4rem 0.55rem; border: 3px solid var(--ink); border-radius: 0.9rem; background: linear-gradient(#ffffff26, #00000030); box-shadow: inset 0 0.2rem 0 rgba(255,255,255,0.25); text-align: center; transition: transform 0.18s cubic-bezier(0.34, 1.8, 0.5, 1); }
+.card:hover { transform: translateY(-3px) scale(1.03); }
+.card .ic { font-size: 2.6rem; line-height: 1.15; height: 3.4rem; display: grid; place-items: center; filter: drop-shadow(0 0.12rem 0 rgba(0,0,0,0.3)); }
+.card .ic img { height: 3.4rem; width: 3.4rem; object-fit: contain; }
+.card .nm { font-size: 1.05rem; font-weight: 700; line-height: 1.1; }
+.card .ds { font-size: 0.8rem; opacity: 0.95; line-height: 1.15; min-height: 1.4em; }
+.card .vps { color: var(--lime); font-weight: 700; font-size: 0.95rem; }
+.card .btn { font-size: 1rem; padding: 0.2rem 0.7rem; border-width: 2px; margin-top: 0.15rem; }
+.card.hot { background: linear-gradient(#ff9a6a, #c8341a); }
+.card.gold { background: linear-gradient(#ffd86a, #b8781a); }
+.card.rainbow { background: linear-gradient(120deg, #ff5a8a, #ffb51c, #46ec50, #28c8ff, #8a5aff); }
+.card.own { box-shadow: inset 0 0 0 3px var(--lime); }
+.card.wear { box-shadow: inset 0 0 0 3px var(--lime), 0 0 0.9rem rgba(200,255,58,0.6); }
+.sec { font-size: 1.15rem; font-weight: 700; margin: 0.3rem 0 0; color: var(--lime); }
+.note { margin: 0; font-size: 0.88rem; opacity: 0.95; }
+.note b { color: var(--lime); }
+.row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.6rem; border: 3px solid var(--ink); border-radius: 0.8rem; background: rgba(255,255,255,0.1); }
+.row .ic { font-size: 1.8rem; }
+.row .tx { flex: 1; display: grid; }
+.row .tx b { font-size: 1.05rem; }
+.row .tx small { font-size: 0.8rem; opacity: 0.95; }
+.row .btn { font-size: 0.95rem; padding: 0.2rem 0.7rem; border-width: 2px; }
+.row input[type=range] { flex: 1; accent-color: var(--lime); }
+.input { font-family: var(--font); font-size: 1rem; padding: 0.35rem 0.6rem; border: 3px solid var(--ink); border-radius: 0.6rem; flex: 1; min-width: 0; }
+.rebirth { display: grid; justify-items: center; gap: 0.6rem; padding: 0.6rem; text-align: center; }
+.rebirth .rbBig { font-family: "Montserrat", var(--font); font-size: 3rem; font-weight: 800; color: #f0b4ff; }
+.rebirth .rbBig span { color: #fff; }
+.rebirth ul { margin: 0; padding-left: 1.2rem; text-align: left; font-size: 1rem; line-height: 1.5; }
+.rbBar { position: relative; width: min(24rem, 80vw); height: 1.8rem; border-radius: 1rem; border: 3px solid var(--ink); background: #140828; overflow: hidden; }
+.rbBarFill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#ff9aff, #8a3aff); }
+.rbBar span { position: relative; display: block; text-align: center; line-height: 1.6rem; font-weight: 700; }
+.btn.big { font-size: 1.6rem; padding: 0.4rem 2rem; }
+
+.card2 { position: relative; display: grid; justify-items: center; gap: 0.5rem; width: min(24rem, 90vw); padding: 1.2rem 1.2rem 1rem; background: radial-gradient(120% 80% at 50% 0%, #6a3ab8 0%, #2e1460 50%, #140828 100%); border: 4px solid var(--ink); border-radius: 1.2rem; box-shadow: 0 0.5rem 0 var(--ink); text-align: center; animation: panelIn 0.3s cubic-bezier(0.34, 1.6, 0.5, 1); }
+.card2 h2 { margin: 0; font-size: 1.8rem; }
+.card2 .big-ic { font-size: 3.6rem; height: 4rem; display: grid; place-items: center; }
+.card2 .big-ic img { height: 4rem; }
+.card2 .acts { display: flex; gap: 0.6rem; }
+.card2 .acts .btn { font-size: 1.15rem; padding: 0.35rem 1.2rem; }
+.card2 .x { position: absolute; right: -0.8rem; top: -0.8rem; }
+.cost { font-size: 1.3rem; font-weight: 700; }
+#offAmt { font-family: "Montserrat", var(--font); font-size: 2.6rem; font-weight: 800; color: var(--lime); }
+.offTitle { font-family: "Montserrat", var(--font); font-size: 2rem; font-weight: 800; color: #fff; letter-spacing: 0.02em; }
+
+/* Daily */
+.dailyCards { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.3rem; width: min(40rem, 92vw); }
+.dcard { display: grid; justify-items: center; gap: 0.1rem; padding: 0.4rem 0.1rem; border: 3px solid var(--ink); border-radius: 0.7rem; background: rgba(255,255,255,0.12); font-size: 0.75rem; font-weight: 700; text-align: center; }
+.dcard .d { font-size: 0.85rem; }
+.dcard .i { font-size: 1.5rem; }
+.dcard.done { opacity: 0.55; }
+.dcard.now { background: linear-gradient(#e8ff8a, #7ad81a); color: var(--ink); text-shadow: none; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { transform: scale(1.06); } }
+
+/* Loader: the symbiote's face bobbing over the lava */
+#start { position: absolute; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 38%, #4a2a8a 0%, #1a0a34 52%, #0a0418 80%), #0a0418; z-index: 40; overflow: hidden; }
+#start::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 22%; background: linear-gradient(transparent, rgba(255,110,20,0.35)), repeating-linear-gradient(90deg, rgba(255,200,40,0.18) 0 3rem, rgba(255,120,20,0.18) 3rem 6rem); pointer-events: none; }
+.loader { position: relative; z-index: 1; display: grid; justify-items: center; gap: 1rem; text-align: center; }
+.logo { font-family: "Montserrat", var(--font); font-size: 4.4rem; font-weight: 800; letter-spacing: 0.02em; line-height: 0.95; color: #fff; }
+.logo em { font-style: normal; color: var(--lime); }
+.logo small { display: block; font-family: var(--font); font-size: 1.45rem; font-weight: 700; margin-top: 0.45rem; color: #e8d0ff; }
+.loadFace { width: 8rem; height: 8rem; background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 6 62 18 80 14 80 34 94 46 84 62 88 82 66 84 50 96 34 84 12 82 16 62 6 46 20 34 20 14 38 18Z' fill='%2312121a' stroke='%23c8ff3a' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M46 46 24 32 34 60Z M54 46 76 32 66 60Z' fill='%23fff'/%3E%3Cpath d='M36 74 40 70 44 75 48 70 52 75 56 70 60 75 64 70' fill='none' stroke='%23c8ff3a' stroke-width='3'/%3E%3C/svg%3E"); filter: drop-shadow(0 0.5rem 0 rgba(0,0,0,0.4)); animation: loadBob 1.4s ease-in-out infinite; }
+@keyframes loadBob { 50% { transform: translateY(-0.6rem) rotate(-6deg) scale(1.05); } }
+#loading { font-size: 1.4rem; font-weight: 700; }
+.err { color: #fff; max-width: 22rem; }
+.cup { display: inline-block; font-style: normal; margin-right: 0.12em; filter: drop-shadow(0 0.08em 0 rgba(0,0,0,0.3)); }
+
+@media (max-width: 760px), (max-height: 520px) {
+    :root { font-size: clamp(8px, calc(100vmin / 46), 14px); }
+    .panel h2 { font-size: 1.6rem; }
+    #goal { font-size: 1.1rem; }
+    #stageTitle .n { font-size: 2rem; }
+    .chunk { height: 2.7rem; font-size: 1.2rem; padding-right: 2rem; }
+    .ib { width: 2.95rem; height: 3.35rem; }
+    .ib .bub { width: 2.5rem; height: 2.5rem; font-size: 1.3rem; }
+    #stageChip { min-width: 0; padding: 0 0.6rem; }
+    #stageText { font-size: 0.95rem; }
+}
+/* portrait phones: the objective line goes under the menu icons */
+@media (max-aspect-ratio: 1/1) {
+    #topBar { top: calc(env(safe-area-inset-top, 0px) + 4.4rem); max-width: 94vw; }
+}
+@media (max-aspect-ratio: 16/10) and (min-width: 761px) {
+    #iconRow { flex-wrap: wrap; justify-content: flex-end; width: 10.6rem; row-gap: 0.4rem; }
+    #rightCol { top: max(12rem, 30vh); }
+}
+/* Low quality: the HUD's decorative animations stop (every animated shine is a repaint each frame) */
+body.lowfx .chunk .sheen::after, body.lowfx .loadFace, body.lowfx #trainTag { animation: none !important; }
+@media (prefers-reduced-motion: reduce) {
+    .toast, #escBanner .rays, #reborn .rays, .dcard.now, .chunk .sheen::after, #cheer.go, .loadFace, #launchBtn, #trainTag { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+    <canvas id="view" tabindex="0" aria-label="Game view"></canvas>
+    <canvas id="speedLines" aria-hidden="true"></canvas>
+    <div id="vignette" aria-hidden="true"></div>
+
+    <div id="hud" hidden>
+        <div id="flash" class="passive" aria-hidden="true"></div>
+        <div id="tpFx" class="passive" aria-hidden="true"></div>
+
+        <!-- Top centre: what to do next, then Wins / Venom / Stage -->
+        <div id="topBar" class="passive">
+            <div id="goal" hidden><span class="o1" id="goalText">Jump to the pad to earn your first Win!</span></div>
+            <div id="statRow">
+                <div class="chip" id="winsChip" style="pointer-events:auto"><span class="ico" aria-hidden="true">🏆</span><b id="winsVal">0</b><button class="btn g-green o1" id="winsPlus" aria-label="Boosts">+</button></div>
+                <div class="chip" id="venomChip"><span class="ico" aria-hidden="true">🕷️</span><b class="o1" id="venomVal">0</b><span class="o1" id="venomRate">+1/s</span></div>
+                <div class="chip" id="stageChip"><div id="stageFill"></div><span class="o1" id="stageText">Lobby</span></div>
+                <div class="chip" id="streakChip" hidden><span class="ico" aria-hidden="true">🔥</span><b class="o1" id="streakVal">2</b></div>
+            </div>
+            <div class="o1" id="boostTag" hidden></div>
+        </div>
+
+        <!-- Left: your level and tentacle -->
+        <div id="levelCard" class="passive">
+            <div id="lvGlow" aria-hidden="true"></div>
+            <div id="lvRing"><div id="lvFace"></div><div id="lvBadge" class="o1"><small>LV</small><b id="lvNum">1</b></div></div>
+            <div id="lvInfo"><span class="t o1">🕷️ Tentacle</span><span class="o" id="lvLen"><b>30</b> studs</span><span class="o1" id="lvNext"></span></div>
+        </div>
+
+        <!-- Right: Symbiotes / Train / Rebirth / x2 Venom -->
+        <div id="rightCol">
+            <button class="chunk c-purple o" id="btnSyms"><span class="sheen"></span>Symbiotes<span class="ico" aria-hidden="true">🕷️</span><span class="badge" id="symBadge" hidden>!</span></button>
+            <button class="chunk c-blue o" id="btnTrain"><span class="sheen"></span>Train<span class="ico" aria-hidden="true">⚡</span></button>
+            <button class="chunk c-rebirth o" id="btnRebirth"><span class="sheen"></span>Rebirth<span class="o1" id="rbMult">x1</span><span class="ico" aria-hidden="true">♻️</span><span class="rb"><span id="rbFill"></span><span class="o1" id="rbText">Lv 1/15</span></span></button>
+            <button class="chunk c-lime o" id="btnX2"><span class="sheen"></span>x2 Venom<span class="ico" aria-hidden="true">🧪</span><span class="sub o1" id="x2Sub">🏆 900</span></button>
+        </div>
+
+        <!-- Top right: menu icons (the top left is the Bloxity overlay's) -->
+        <div id="iconRow">
+            <button class="ib" id="btnShop" aria-label="Win Shop"><span class="bub" style="--bg:linear-gradient(#fff3b0,#ffc428)">🛒</span><span class="lb o1">Shop</span><span class="badge" id="shopBadge" hidden>!</span></button>
+            <button class="ib" id="btnDaily" aria-label="Daily rewards"><span class="bub" style="--bg:linear-gradient(#d8f4ff,#7ad0ff)">📅</span><span class="lb o1">Daily</span><span class="badge" id="dailyBadge" hidden>!</span></button>
+            <button class="ib" id="btnGift" aria-label="Playtime gifts"><span class="bub" style="--bg:linear-gradient(#ffe0e0,#ff7a8a)">🎁</span><span class="lb o1" id="giftLb">2m</span><span class="badge" id="giftBadge" hidden>!</span></button>
+            <button class="ib" id="btnTeleport" aria-label="Teleport"><span class="bub" style="--bg:linear-gradient(#e0ffe0,#7aea8a)">🚩</span><span class="lb o1">Teleport</span></button>
+            <button class="ib" id="btnInvite" aria-label="Invite friends"><span class="bub" style="--bg:linear-gradient(#f0e0ff,#b48aff)">👥</span><span class="lb o1">Invite</span></button>
+            <button class="ib" id="btnConfig" aria-label="Settings"><span class="bub" style="--bg:linear-gradient(#ffffff,#d0d8e8)">⚙️</span><span class="lb o1">Settings</span></button>
+        </div>
+
+        <div id="friendBoost" class="o1 passive"></div>
+
+        <!-- Bottom: RELEASE VENOM on a launch pad, the meter while you steer -->
+        <button class="o" id="launchBtn" hidden>🕷️ RELEASE VENOM! <kbd id="launchKey">SPACE</kbd></button>
+        <div id="meter" hidden>
+            <button class="steer" id="steerU" aria-label="Steer up">▲</button>
+            <div class="row1">
+                <button class="steer" id="steerL" aria-label="Steer left">◀</button>
+                <div id="meterWrap"><div id="meterBar"><div id="meterFill"></div><div class="o1" id="meterText">23/23</div></div><div id="meterKnob"></div></div>
+                <button class="steer" id="steerR" aria-label="Steer right">▶</button>
+            </div>
+            <button class="steer" id="steerD" aria-label="Steer down">▼</button>
+        </div>
+        <div id="trainTag" class="o passive" hidden></div>
+
+        <div id="stageTitle" class="passive" hidden><div class="n o" id="stageName">Stage 1</div><div class="s o1" id="stageSub"></div></div>
+        <div id="clearBanner" class="passive" hidden><div class="t o" id="clearT">STAGE 1 CLEAR!</div><div class="s o1" id="clearS"></div></div>
+        <div id="winPop" class="passive" hidden><div class="o" id="winPopT">+1 WINS!</div></div>
+        <div id="lvUp" class="passive" hidden><div class="o" id="lvUpT">LEVEL 2!</div><div class="o1" id="lvUpS"></div></div>
+        <div id="cheer" class="o passive" hidden></div>
+        <div id="escBanner" class="passive" hidden><div class="rays"></div><div class="t o">YOU ESCAPED!</div><div class="s o" id="escSub">+1,500 Wins</div><div class="o" id="escUnlock" hidden></div></div>
+        <div id="reborn" class="passive" hidden><div class="rays"></div><div class="t o">♻️ REBIRTH!</div><div class="s o" id="rebornS"></div></div>
+        <div id="toasts"></div>
+        <div id="tips" class="o1" hidden></div>
+        <button id="promptBtn" hidden><kbd>E</kbd><span id="promptTxt"></span></button>
+        <div id="fps" class="o1 passive" hidden>60 FPS</div>
+
+        <div id="touch" hidden>
+            <div id="stick"><div id="knob"></div></div>
+            <button class="btn g-blue o" id="jumpBtn">JUMP</button>
+        </div>
+    </div>
+
+    <!-- Panels: Win Shop, Rebirth, Settings, Gifts, Invite, Teleport -->
+    <div id="modal" class="overlay" hidden>
+        <div class="panel" role="dialog" aria-labelledby="modalTitle">
+            <header><h2 class="o" id="modalTitle">WIN SHOP</h2><button class="btn g-red x o1" id="modalClose" aria-label="Close">X</button></header>
+            <div class="tabs" id="modalTabs"></div>
+            <div class="body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="confirm" class="overlay" hidden>
+        <div class="card2" role="dialog" aria-labelledby="confirmTitle">
+            <button class="btn g-red x o" id="confirmClose" aria-label="Close">X</button>
+            <div class="big-ic" id="confirmIc">🛒</div>
+            <h2 class="o" id="confirmTitle">Buy?</h2>
+            <div class="o1" id="confirmText"></div>
+            <div class="cost o1" id="confirmCost"></div>
+            <div class="acts"><button class="btn g-green o" id="confirmYes">Buy</button><button class="btn g-grey o" id="confirmNo">Cancel</button></div>
+            <small class="o1" id="confirmNote" style="opacity:0.95"></small>
+        </div>
+    </div>
+
+    <div id="daily" class="overlay" hidden>
+        <div class="card2" style="width:min(42rem,94vw)" role="dialog" aria-labelledby="dailyTitle">
+            <button class="btn g-red x o" id="dailyClose" aria-label="Close">X</button>
+            <h2 class="o" id="dailyTitle">📅 Daily Rewards</h2>
+            <div class="dailyCards" id="dailyCards"></div>
+            <div class="o1" id="dailyLeft">Your daily reward is ready!</div>
+            <button class="btn g-yellow o" id="dailyClaim" style="font-size:1.3rem;padding:0.35rem 2rem">CLAIM</button>
+        </div>
+    </div>
+
+    <div id="offlineCard" class="overlay" hidden>
+        <div class="card2" role="dialog" aria-labelledby="offTitle">
+            <div class="offTitle o" id="offTitle">🕷️ GET VENOM OFFLINE</div>
+            <div class="o" id="offAmt">+0 Venom</div>
+            <div class="o1" id="offSecs"></div>
+            <div class="acts"><button class="btn g-green o" id="offClaim">Claim!</button></div>
+        </div>
+    </div>
+
+    <div id="worldLoad" class="overlay" hidden>
+        <div class="loader">
+            <div class="loadFace" aria-hidden="true"></div>
+            <div class="o" id="worldLoadT">Entering World 2…</div>
+            <div class="o1" id="worldLoadS"></div>
+        </div>
+    </div>
+
+    <div id="disconnected" class="overlay" hidden>
+        <div class="card2" role="alertdialog" aria-labelledby="discTitle">
+            <h2 class="o" id="discTitle">Disconnected</h2>
+            <div class="o1">Lost connection to the server. Your progress is saved — rejoin to keep going.</div>
+            <div class="acts"><button class="btn g-green o" id="reconnectBtn">Rejoin</button></div>
+        </div>
+    </div>
+
+    <div id="start">
+        <div class="loader">
+            <div class="loadFace" aria-hidden="true"></div>
+            <div class="logo o"><em>+1</em> VENOM ESCAPE<small class="o1">Grow your venom. Swing over the lava. Escape!</small></div>
+            <div id="loading" class="o1">Loading…</div>
+            <div class="err o1" id="connectErr" hidden></div>
+            <button class="btn g-green o" id="playBtn" hidden>Try again</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://sdk.bloxity.io/v1/legion-sdk.min.js"></script>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
