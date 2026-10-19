@@ -184,6 +184,14 @@ export function setLaunch(on, touch) {
     $('#launchKey').hidden = !!touch;
 }
 $('#launchBtn').addEventListener('click', () => actions.release && actions.release());
+let homeOn = null;
+export function setHome(on, touch) {
+    if (on === homeOn) return;
+    homeOn = on;
+    $('#homeBtn').hidden = !on;
+    $('#homeKey').hidden = !!touch;
+}
+$('#homeBtn').addEventListener('click', () => actions.goHome && actions.goHome());
 let trainKey = null;
 export function setTrainTag(mult) {
     if (mult === trainKey) return;

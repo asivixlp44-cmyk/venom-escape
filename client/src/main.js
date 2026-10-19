@@ -24,7 +24,7 @@ import { outfitUniforms, venomizeTree } from './venomMaterial.js';
 import {
     updateHud, toast, showStageTitle, flash, teleportFx, renderProgress, animateCounters, bumpWins, openDailyOnJoin, refreshModal,
     refreshDaily, openModal, notEnough, promptEl, promptTxtEl, codeResult, closeTop, anyPopup, setGoal, setMeter, setLaunch,
-    setTrainTag, showPadWin, showEscaped, showLevelUp, showReborn, showOffline, cheer, showStageClear, showWorldTitle, setWorldLoading, setStreak,
+    setTrainTag, showPadWin, showEscaped, showLevelUp, showReborn, showOffline, cheer, showStageClear, showWorldTitle, setWorldLoading, setStreak, setHome,
 } from './ui.js';
 import {
     CFG, STAGES, KITS, SKINS, TRAIN_PADS, WORLDS, STAGES_PER_WORLD, fmt, clamp, levelOf, tentacleLen, headSpeed, segments, padUnlocked, venomFor, suitOf,
@@ -395,6 +395,7 @@ function startCast() {
         return true;
     }
     P.mode = 'cast'; P.modeT = 0;
+    homeOffer = -1;
     TT.pad = k;
     P.hv.set(0, 0, 0); P.kv.set(0, 0, 0); P.vel.y = 0;
     // aim where the camera looks
@@ -408,6 +409,23 @@ function startCast() {
     return true;
 }
 const suitGlow = () => { const s = suitColors(); return s.glow; };
+// ----- BACK HOME: once you've claimed a platform's Wins (or your tentacle is too short for the next
+// stage), one tap takes you home to train and shop (World 1: the lobby; World 2 / 3: its hub) -----
+let homeOffer = -1;
+function homeShown() {
+    if (P.mode !== 'walk' || atStart() || P.onLaunch >= 0 || anyPopup()) return false;
+    const i = P.stage;
+    if (i < 0 || !onPlatformLoose(i)) return false;
+    if (homeOffer === i) return true;
+    const st = STAGES[i + 1];
+    return !!st && worldOfStage(i + 1) === P.world && tentacleLen(level(), S, P.world) < tentacleLen(st.R, null, P.world) * 0.8;
+}
+actions.goHome = () => {
+    if (P.mode !== 'walk' || worldLoading) return;
+    homeOffer = -1;
+    if (P.world === 1) teleportLobby(); else goWorld(P.world);
+    toast('🏠 Back home! Train your Venom and buy symbiotes, then go again', '#ffffff');
+};
 // a HUD button bounces for a moment (where to go next)
 function nudge(sel) { const el = $(sel); if (!el) return; el.classList.remove('nudge'); requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('nudge'))); clearTimeout(el._nt); el._nt = setTimeout(() => el.classList.remove('nudge'), 3600); }
 function beginGrow() {
@@ -1028,6 +1046,7 @@ async function connect(name, endpoint) {
         floatText('+' + fmt(m.n) + ' 🏆', '#ffd028', P.pos.clone().add(new V3(0, 6.5, 0)), 4.4);
         if (m.streak > 0) floatText('🔥 STREAK +' + Math.round(m.streak * 100) + '%', '#ffb04a', P.pos.clone().add(new V3(0, 8.6, 0)), 3.4);
         if (m.why === 'pad' || m.why === 'bonus') {
+            homeOffer = m.i;
             run.claimed.add(m.i + (m.why === 'bonus' ? 'b' : ''));
             if (m.why === 'pad') run.claimed.add(String(m.i));
             showPadWin(m.n, m.why === 'bonus');
@@ -1132,6 +1151,7 @@ addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
     if (e.code === 'KeyE' && running && P.mode === 'walk' && activePrompt) usePrompt();
+    if (e.code === 'KeyH' && running && homeShown()) actions.goHome();
     if (e.code === 'Escape') {
         if (closeTop()) return;
         if (running && BX.isEmbedded()) BX.showPortalMenu();
@@ -1482,6 +1502,7 @@ function update(dt) {
     animateCounters(dt);
     setMeter(meterState());
     setLaunch(P.mode === 'walk' && P.onLaunch >= 0, isTouch);
+    setHome(homeShown(), isTouch);
     S.flying = P.mode !== 'walk';
     infoT -= dt;
     if (infoT <= 0) { infoT = 60; sendClientInfo(); }

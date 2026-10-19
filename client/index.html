@@ -151,6 +151,10 @@ button:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
 
 /* Bottom centre: RELEASE VENOM, the tentacle meter, training */
 #launchBtn { position: absolute; left: 50%; bottom: max(6.5rem, 15vh); transform: translateX(-50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 1.6rem 0.65rem; font-size: 2rem; border: 0.25rem solid var(--ink); border-radius: 1.4rem; background: linear-gradient(#5affff, #1a8aff 45%, #5a1ad8); box-shadow: inset 0 -0.4rem 0 rgba(0,0,0,0.25), inset 0 0.3rem 0 rgba(255,255,255,0.4), 0 0.3rem 0 var(--ink); animation: launchPulse 1s ease-in-out infinite; }
+#homeBtn { position: absolute; left: 50%; bottom: max(6.5rem, 15vh); transform: translateX(-50%); display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1.5rem 0.6rem; font-size: 1.8rem; color: #fff; border: 0.25rem solid var(--ink); border-radius: 1.4rem; background: linear-gradient(#ff8a7a, #e8302a 45%, #a80e1e); box-shadow: inset 0 -0.4rem 0 rgba(0,0,0,0.25), inset 0 0.3rem 0 rgba(255,255,255,0.4), 0 0.3rem 0 var(--ink); animation: homeIn 0.4s cubic-bezier(0.34, 1.7, 0.5, 1); cursor: pointer; }
+#homeBtn:active { transform: translateX(-50%) scale(0.95); }
+#homeBtn kbd { display: inline-grid; place-items: center; padding: 0.05rem 0.5rem; border-radius: 0.5rem; background: #fff; color: var(--ink); font-family: var(--font); font-size: 1rem; text-shadow: none; box-shadow: 0 0.15rem 0 var(--ink); }
+@keyframes homeIn { 0% { transform: translateX(-50%) scale(0.5); opacity: 0; } 100% { transform: translateX(-50%) scale(1); opacity: 1; } }
 #launchBtn kbd { display: inline-grid; place-items: center; padding: 0.05rem 0.5rem; border-radius: 0.5rem; background: #fff; color: var(--ink); font-family: var(--font); font-size: 1rem; text-shadow: none; box-shadow: 0 0.15rem 0 var(--ink); }
 @keyframes launchPulse { 50% { transform: translateX(-50%) scale(1.07); } }
 #meter { position: absolute; left: 50%; bottom: max(7rem, 16vh); transform: translateX(-50%); display: grid; justify-items: center; gap: 0.25rem; pointer-events: none; }
@@ -400,6 +404,7 @@ body.lowfx .chunk .sheen::after, body.lowfx .loadFace, body.lowfx #trainTag { an
 
         <!-- Bottom: RELEASE VENOM on a launch pad, the meter while you steer -->
         <button class="o" id="launchBtn" hidden>🕷️ RELEASE VENOM! <kbd id="launchKey">SPACE</kbd></button>
+        <button class="o" id="homeBtn" hidden>🏠 BACK HOME <kbd id="homeKey">H</kbd></button>
         <div id="meter" hidden>
             <button class="steer" id="steerU" aria-label="Steer up">▲</button>
             <div class="row1">
